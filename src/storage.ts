@@ -235,6 +235,19 @@ export class AnalyticsStorage {
       .all(limit) as any[];
   }
 
+  /** Individual request rows since `hours` ago, newest first. */
+  getRecentRequests(hours = 1, limit = 200) {
+    const since = new Date(Date.now() - hours * 3600_000).toISOString();
+    const cap = Math.min(Math.max(1, limit), 1000);
+    return this.db
+      .prepare(
+        `SELECT method, path, status, response_time, timestamp, ip, user_agent, tags
+        FROM requests WHERE timestamp >= ?
+        ORDER BY timestamp DESC LIMIT ?`
+      )
+      .all(since, cap) as any[];
+  }
+
   close() {
     this.db.close();
   }

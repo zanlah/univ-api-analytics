@@ -32,5 +32,7 @@ export declare class AnalyticsStorage {
     };
     getTimeseries(hours?: number, bucketMinutes?: number): any[];
     getRecentErrors(limit?: number): any[];
+    /** Individual request rows since `hours` ago, newest first. */
+    getRecentRequests(hours?: number, limit?: number): any[];
     close(): void;
 }

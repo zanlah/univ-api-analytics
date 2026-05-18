@@ -50,6 +50,7 @@ export function renderDashboard(basePath) {
   .tag-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 4px; background: #1e3a5f; color: #7dd3fc; }
   .refresh { font-size: 12px; color: #64748b; }
   .empty-state { text-align: center; color: #64748b; padding: 32px; font-size: 13px; }
+  .scroll-table-wrap { max-height: 480px; overflow-y: auto; border-radius: 12px; }
   @media (max-width: 768px) { .charts { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -94,6 +95,14 @@ export function renderDashboard(basePath) {
 </div>
 
 <div class="table-section">
+  <h3>Requests (last hour)</h3>
+  <p class="refresh" style="margin-bottom:10px">Newest first, always the past 60 minutes.</p>
+  <div class="scroll-table-wrap">
+    <table id="recentRequestsTable"></table>
+  </div>
+</div>
+
+<div class="table-section">
   <h3>Recent errors</h3>
   <table id="errorsTable"></table>
 </div>
@@ -106,11 +115,12 @@ let activeTag = null;
 
 async function load() {
   const hours = document.getElementById('timeRange').value;
-  const [overview, timeseries, errors, tags] = await Promise.all([
+  const [overview, timeseries, errors, tags, recentRequests] = await Promise.all([
     fetch(BASE + '/api/overview?hours=' + hours).then(r => r.json()),
     fetch(BASE + '/api/timeseries?hours=' + hours).then(r => r.json()),
     fetch(BASE + '/api/errors').then(r => r.json()),
     fetch(BASE + '/api/tags').then(r => r.json()),
+    fetch(BASE + '/api/recent-requests?hours=1&limit=500').then(r => r.json()),
   ]);
 
   document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -127,6 +137,7 @@ async function load() {
   renderStatusChart(overview.byStatus);
   renderEndpoints(overview.topEndpoints);
   renderSlow(overview.slowEndpoints);
+  renderRecentRequests(recentRequests);
   renderErrors(errors);
 
   tagKeys = tags;
@@ -323,6 +334,21 @@ function renderSlow(data) {
   });
   html += '</tbody>';
   document.getElementById('slowTable').innerHTML = html;
+}
+
+function renderRecentRequests(data) {
+  let html = '<thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Status</th><th>Response</th><th>IP</th></tr></thead><tbody>';
+  if (!data.length) {
+    html += '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:24px">No requests in the last hour</td></tr>';
+  } else {
+    data.forEach(d => {
+      const sc = d.status >= 500 ? 's5' : d.status >= 400 ? 's4' : d.status >= 300 ? 's3' : 's2';
+      const ip = d.ip ? String(d.ip).split(',')[0].trim() : '—';
+      html += '<tr><td>' + new Date(d.timestamp).toLocaleString() + '</td><td><span class="method ' + d.method + '">' + d.method + '</span></td><td>' + d.path + '</td><td><span class="status ' + sc + '">' + d.status + '</span></td><td>' + d.response_time + ' ms</td><td style="color:#94a3b8;font-size:12px">' + ip + '</td></tr>';
+    });
+  }
+  html += '</tbody>';
+  document.getElementById('recentRequestsTable').innerHTML = html;
 }
 
 function renderErrors(data) {

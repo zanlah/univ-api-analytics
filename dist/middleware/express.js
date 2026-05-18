@@ -29,6 +29,12 @@ export function analytics(options = {}) {
             res.json(storage.getRecentErrors());
             return;
         }
+        if (urlPath === `${dashboardPath}/api/recent-requests`) {
+            const hours = Number(req.query?.hours ?? 1);
+            const limit = Number(req.query?.limit ?? 200);
+            res.json(storage.getRecentRequests(hours, limit));
+            return;
+        }
         if (urlPath === `${dashboardPath}/api/tags`) {
             res.json(storage.getTagKeys());
             return;

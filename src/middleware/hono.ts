@@ -82,6 +82,12 @@ export function analytics(options: HonoAnalyticsOptions = {}): {
       return c.json(storage.getRecentErrors());
     });
 
+    app.get(`${dashboardPath}/api/recent-requests`, (c: Context) => {
+      const hours = Number(c.req.query("hours") ?? 1);
+      const limit = Number(c.req.query("limit") ?? 200);
+      return c.json(storage.getRecentRequests(hours, limit));
+    });
+
     app.get(`${dashboardPath}/api/tags`, (c: Context) => {
       return c.json(storage.getTagKeys());
     });
