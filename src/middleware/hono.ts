@@ -1,8 +1,14 @@
 import type { Context, MiddlewareHandler, Hono } from "hono";
 import { AnalyticsStorage, type AnalyticsConfig } from "../storage.js";
 import { renderDashboard } from "../dashboard/template.js";
+import {
+  resolveAuth,
+  checkBasicAuth,
+  WWW_AUTHENTICATE,
+  type AuthOptions,
+} from "../auth.js";
 
-export interface HonoAnalyticsOptions extends AnalyticsConfig {
+export interface HonoAnalyticsOptions extends AnalyticsConfig, AuthOptions {
   dashboardPath?: string;
   exclude?: string[];
   extract?: Record<string, (c: Context) => string | null>;
@@ -16,6 +22,7 @@ export function analytics(options: HonoAnalyticsOptions = {}): {
   const userExclude = options.exclude ?? [];
   const extractors = options.extract ?? {};
   const storage = new AnalyticsStorage(options);
+  const creds = resolveAuth(options);
 
   let resolvedDashboardPrefix = "";
 
@@ -59,6 +66,17 @@ export function analytics(options: HonoAnalyticsOptions = {}): {
   };
 
   function mount(app: Hono<any>) {
+    const authGuard: MiddlewareHandler = async (c, next) => {
+      if (!creds || checkBasicAuth(c.req.header("Authorization"), creds)) {
+        return next();
+      }
+      return c.body("Authentication required", 401, {
+        "WWW-Authenticate": WWW_AUTHENTICATE,
+      });
+    };
+    app.use(dashboardPath, authGuard);
+    app.use(`${dashboardPath}/*`, authGuard);
+
     app.get(dashboardPath, (c: Context) => {
       const actualPath = new URL(c.req.url).pathname;
       if (!resolvedDashboardPrefix) {

@@ -1,4 +1,5 @@
 import { type AnalyticsConfig } from "../storage.js";
+import { type AuthOptions } from "../auth.js";
 type Req = {
     method: string;
     url: string;
@@ -15,7 +16,7 @@ type Res = {
     setHeader: (name: string, value: string) => void;
 };
 type Next = () => void;
-export interface ExpressAnalyticsOptions extends AnalyticsConfig {
+export interface ExpressAnalyticsOptions extends AnalyticsConfig, AuthOptions {
     dashboardPath?: string;
     exclude?: string[];
     extract?: Record<string, (req: Req, res: Res) => string | null>;

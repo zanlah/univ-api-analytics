@@ -2,11 +2,14 @@
 
 Drop-in API analytics middleware for **Hono** and **Express** with a built-in dashboard. Zero config, self-hosted, no external services.
 
-- SQLite-backed (via better-sqlite3) — no extra infrastructure
+- SQLite-backed via Node's built-in `node:sqlite` — **zero dependencies**, no native build step
+- Optional dashboard auth (HTTP Basic) via environment variables
 - Dark-themed dashboard with charts (Chart.js)
 - Custom tag extraction (group insights by user, API key, resource, etc.)
 - Auto-cleanup with configurable retention
 - Works with Hono v4+ and Express v4+
+
+> **Requires Node.js >= 22.5.0** (uses the built-in `node:sqlite` module).
 
 ![Dashboard](https://raw.githubusercontent.com/zanlah/univ-api-analytics/main/docs/dashboard.png)
 
@@ -61,6 +64,31 @@ app.use(expressAnalytics({
 | `retentionDays` | `number` | `30` | Days to keep request logs |
 | `exclude` | `string[]` | `[]` | URL paths to skip logging |
 | `extract` | `Record<string, Function>` | `{}` | Custom tag extractors |
+| `authUser` | `string` | `$ANALYTICS_AUTH_USER` | Dashboard username (overrides env var) |
+| `authPassword` | `string` | `$ANALYTICS_AUTH_PASSWORD` | Dashboard password (overrides env var) |
+
+## Dashboard Authentication
+
+The dashboard and its JSON API can be protected with HTTP Basic auth. The simplest setup is environment variables — no code change required:
+
+```bash
+ANALYTICS_AUTH_USER=admin
+ANALYTICS_AUTH_PASSWORD=your-strong-password
+```
+
+When **both** are set, every request to `{dashboardPath}` and `{dashboardPath}/api/*` requires those credentials (the browser shows a native login prompt). If either is missing, the dashboard stays open — so set both in any environment where the dashboard is reachable.
+
+You can also pass credentials explicitly (these take precedence over the env vars):
+
+```ts
+honoAnalytics({
+  dashboardPath: "/analytics",
+  authUser: process.env.DASH_USER,
+  authPassword: process.env.DASH_PASS,
+});
+```
+
+> Always serve the dashboard over HTTPS — Basic auth sends credentials base64-encoded, not encrypted.
 
 ## Custom Tags
 

@@ -1,10 +1,12 @@
 import { AnalyticsStorage } from "../storage.js";
 import { renderDashboard } from "../dashboard/template.js";
+import { resolveAuth, checkBasicAuth, WWW_AUTHENTICATE, } from "../auth.js";
 export function analytics(options = {}) {
     const dashboardPath = options.dashboardPath ?? "/analytics";
     const userExclude = options.exclude ?? [];
     const extractors = options.extract ?? {};
     const storage = new AnalyticsStorage(options);
+    const creds = resolveAuth(options);
     let resolvedDashboardPrefix = "";
     const middleware = async (c, next) => {
         const urlPath = new URL(c.req.url).pathname;
@@ -40,6 +42,16 @@ export function analytics(options = {}) {
         });
     };
     function mount(app) {
+        const authGuard = async (c, next) => {
+            if (!creds || checkBasicAuth(c.req.header("Authorization"), creds)) {
+                return next();
+            }
+            return c.body("Authentication required", 401, {
+                "WWW-Authenticate": WWW_AUTHENTICATE,
+            });
+        };
+        app.use(dashboardPath, authGuard);
+        app.use(`${dashboardPath}/*`, authGuard);
         app.get(dashboardPath, (c) => {
             const actualPath = new URL(c.req.url).pathname;
             if (!resolvedDashboardPrefix) {

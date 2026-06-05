@@ -1,11 +1,17 @@
 import { AnalyticsStorage, type AnalyticsConfig } from "../storage.js";
 import { renderDashboard } from "../dashboard/template.js";
+import {
+  resolveAuth,
+  checkBasicAuth,
+  WWW_AUTHENTICATE,
+  type AuthOptions,
+} from "../auth.js";
 
 type Req = { method: string; url: string; originalUrl?: string; ip?: string; headers: Record<string, any>; query?: Record<string, any> };
 type Res = { statusCode: number; on: (event: string, cb: () => void) => void; send: (body: string) => any; json: (body: any) => any; setHeader: (name: string, value: string) => void };
 type Next = () => void;
 
-export interface ExpressAnalyticsOptions extends AnalyticsConfig {
+export interface ExpressAnalyticsOptions extends AnalyticsConfig, AuthOptions {
   dashboardPath?: string;
   exclude?: string[];
   extract?: Record<string, (req: Req, res: Res) => string | null>;
@@ -16,10 +22,24 @@ export function analytics(options: ExpressAnalyticsOptions = {}) {
   const userExclude = options.exclude ?? [];
   const extractors = options.extract ?? {};
   const storage = new AnalyticsStorage(options);
+  const creds = resolveAuth(options);
 
   return function analyticsMiddleware(req: Req, res: Res, next: Next) {
     const fullPath = req.originalUrl ?? req.url;
     const urlPath = fullPath.split("?")[0];
+
+    const isDashboardRoute =
+      urlPath === dashboardPath || urlPath.startsWith(`${dashboardPath}/`);
+
+    // Require auth for the dashboard and its API when credentials are configured.
+    if (isDashboardRoute && creds) {
+      if (!checkBasicAuth(req.headers["authorization"], creds)) {
+        res.statusCode = 401;
+        res.setHeader("WWW-Authenticate", WWW_AUTHENTICATE);
+        res.send("Authentication required");
+        return;
+      }
+    }
 
     // Dashboard routes
     if (urlPath === dashboardPath) {

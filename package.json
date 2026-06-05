@@ -41,14 +41,14 @@
     "type": "git",
     "url": "git+https://github.com/zanlah/univ-api-analytics.git"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.8.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^22.0.0",
+    "@types/node": "^22.5.2",
     "hono": "^4.12.19",
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=22.5.0"
   },
   "peerDependencies": {
     "express": ">=4.0.0",

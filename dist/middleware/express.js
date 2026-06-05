@@ -1,13 +1,25 @@
 import { AnalyticsStorage } from "../storage.js";
 import { renderDashboard } from "../dashboard/template.js";
+import { resolveAuth, checkBasicAuth, WWW_AUTHENTICATE, } from "../auth.js";
 export function analytics(options = {}) {
     const dashboardPath = options.dashboardPath ?? "/analytics";
     const userExclude = options.exclude ?? [];
     const extractors = options.extract ?? {};
     const storage = new AnalyticsStorage(options);
+    const creds = resolveAuth(options);
     return function analyticsMiddleware(req, res, next) {
         const fullPath = req.originalUrl ?? req.url;
         const urlPath = fullPath.split("?")[0];
+        const isDashboardRoute = urlPath === dashboardPath || urlPath.startsWith(`${dashboardPath}/`);
+        // Require auth for the dashboard and its API when credentials are configured.
+        if (isDashboardRoute && creds) {
+            if (!checkBasicAuth(req.headers["authorization"], creds)) {
+                res.statusCode = 401;
+                res.setHeader("WWW-Authenticate", WWW_AUTHENTICATE);
+                res.send("Authentication required");
+                return;
+            }
+        }
         // Dashboard routes
         if (urlPath === dashboardPath) {
             res.setHeader("Content-Type", "text/html");

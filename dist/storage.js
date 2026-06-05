@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 export class AnalyticsStorage {
     db;
@@ -7,8 +7,8 @@ export class AnalyticsStorage {
     constructor(config = {}) {
         const dbPath = config.dbPath ?? path.join(process.cwd(), "analytics.db");
         this.retentionDays = config.retentionDays ?? 30;
-        this.db = new Database(dbPath);
-        this.db.pragma("journal_mode = WAL");
+        this.db = new DatabaseSync(dbPath);
+        this.db.exec("PRAGMA journal_mode = WAL;");
         this.migrate();
         this.insertStmt = this.db.prepare(`
       INSERT INTO requests (method, path, status, response_time, timestamp, ip, user_agent, tags)
